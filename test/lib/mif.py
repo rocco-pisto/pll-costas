@@ -1,6 +1,6 @@
 from pathlib import Path
 from sfixed import SFixed
-from math import sin, cos, pi
+import numpy as np
 
 
 def write_mif(values, width, path, address_radix="UNS", data_radix="HEX"):
@@ -47,8 +47,12 @@ if __name__ == "__main__":
     rom_sin_folder = base_folder / "src" / "lib" / "altera" / "rom_sin"
     rom_cos_folder = base_folder / "src" / "lib" / "altera" / "rom_cos"
     # Generate sine and cosine tables
-    sin_table = [SFixed(w_l, -w_r, sin(0.5 * pi * i / n_pt)).u for i in range(n_pt)]
-    cos_table = [SFixed(w_l, -w_r, cos(0.5 * pi * i / n_pt)).u for i in range(n_pt)]
+    sin_table = [
+        SFixed(w_l, -w_r, np.sin(0.5 * np.pi * i / n_pt)).u for i in range(n_pt)
+    ]
+    cos_table = [
+        SFixed(w_l, -w_r, np.cos(0.5 * np.pi * i / n_pt)).u for i in range(n_pt)
+    ]
 
     # Write tables to MIF files
     write_mif(sin_table, width=w_l + w_r, path=rom_sin_folder / "sin_table.mif")

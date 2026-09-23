@@ -11,11 +11,14 @@ wheels/
 
 # Quartus-generated files
 db/
+incremental_db/
 greybox_tmp/
 output_files/
+*.rpt
 
 # Questasim-generated files
 sim_build/
+simulation/
 
 # Testbench-generated files
 results/
