@@ -13,3 +13,9 @@ wheels/
 db/
 greybox_tmp/
 output_files/
+
+# Questasim-generated files
+sim_build/
+
+# Testbench-generated files
+results/

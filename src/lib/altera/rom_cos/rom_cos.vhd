@@ -46,26 +46,26 @@ ENTITY rom_cos IS
 		address_a		: IN STD_LOGIC_VECTOR (4 DOWNTO 0);
 		address_b		: IN STD_LOGIC_VECTOR (4 DOWNTO 0);
 		clock		: IN STD_LOGIC  := '1';
-		q_a		: OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
-		q_b		: OUT STD_LOGIC_VECTOR (7 DOWNTO 0)
+		q_a		: OUT STD_LOGIC_VECTOR (15 DOWNTO 0);
+		q_b		: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
 	);
 END rom_cos;
 
 
 ARCHITECTURE SYN OF rom_cos IS
 
-	SIGNAL sub_wire0_bv	: BIT_VECTOR (7 DOWNTO 0);
-	SIGNAL sub_wire0	: STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL sub_wire0_bv	: BIT_VECTOR (15 DOWNTO 0);
+	SIGNAL sub_wire0	: STD_LOGIC_VECTOR (15 DOWNTO 0);
 	SIGNAL sub_wire1	: STD_LOGIC ;
-	SIGNAL sub_wire2	: STD_LOGIC_VECTOR (7 DOWNTO 0);
-	SIGNAL sub_wire3	: STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL sub_wire2	: STD_LOGIC_VECTOR (15 DOWNTO 0);
+	SIGNAL sub_wire3	: STD_LOGIC_VECTOR (15 DOWNTO 0);
 
 BEGIN
-	sub_wire0_bv(7 DOWNTO 0) <= "00000000";
+	sub_wire0_bv(15 DOWNTO 0) <= "0000000000000000";
 	sub_wire0    <= To_stdlogicvector(sub_wire0_bv);
 	sub_wire1    <= '0';
-	q_a    <= sub_wire2(7 DOWNTO 0);
-	q_b    <= sub_wire3(7 DOWNTO 0);
+	q_a    <= sub_wire2(15 DOWNTO 0);
+	q_b    <= sub_wire3(15 DOWNTO 0);
 
 	altsyncram_component : altsyncram
 	GENERIC MAP (
@@ -89,8 +89,8 @@ BEGIN
 		ram_block_type => "M9K",
 		widthad_a => 5,
 		widthad_b => 5,
-		width_a => 8,
-		width_b => 8,
+		width_a => 16,
+		width_b => 16,
 		width_byteena_a => 1,
 		width_byteena_b => 1,
 		wrcontrol_wraddress_reg_b => "CLOCK0"
@@ -144,7 +144,7 @@ END SYN;
 -- Retrieval info: PRIVATE: JTAG_ENABLED NUMERIC "0"
 -- Retrieval info: PRIVATE: JTAG_ID STRING "NONE"
 -- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
--- Retrieval info: PRIVATE: MEMSIZE NUMERIC "256"
+-- Retrieval info: PRIVATE: MEMSIZE NUMERIC "512"
 -- Retrieval info: PRIVATE: MEM_IN_BITS NUMERIC "0"
 -- Retrieval info: PRIVATE: MIFfilename STRING "./src/lib/altera/rom_cos/cos_table.mif"
 -- Retrieval info: PRIVATE: OPERATION_MODE NUMERIC "3"
@@ -162,10 +162,10 @@ END SYN;
 -- Retrieval info: PRIVATE: USE_DIFF_CLKEN NUMERIC "0"
 -- Retrieval info: PRIVATE: UseDPRAM NUMERIC "1"
 -- Retrieval info: PRIVATE: VarWidth NUMERIC "0"
--- Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "8"
--- Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "8"
--- Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "8"
--- Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "8"
+-- Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "16"
+-- Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "16"
+-- Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "16"
+-- Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "16"
 -- Retrieval info: PRIVATE: WRADDR_ACLR_B NUMERIC "0"
 -- Retrieval info: PRIVATE: WRADDR_REG_B NUMERIC "1"
 -- Retrieval info: PRIVATE: WRCTRL_ACLR_B NUMERIC "0"
@@ -192,25 +192,25 @@ END SYN;
 -- Retrieval info: CONSTANT: RAM_BLOCK_TYPE STRING "M9K"
 -- Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "5"
 -- Retrieval info: CONSTANT: WIDTHAD_B NUMERIC "5"
--- Retrieval info: CONSTANT: WIDTH_A NUMERIC "8"
--- Retrieval info: CONSTANT: WIDTH_B NUMERIC "8"
+-- Retrieval info: CONSTANT: WIDTH_A NUMERIC "16"
+-- Retrieval info: CONSTANT: WIDTH_B NUMERIC "16"
 -- Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "1"
 -- Retrieval info: CONSTANT: WIDTH_BYTEENA_B NUMERIC "1"
 -- Retrieval info: CONSTANT: WRCONTROL_WRADDRESS_REG_B STRING "CLOCK0"
 -- Retrieval info: USED_PORT: address_a 0 0 5 0 INPUT NODEFVAL "address_a[4..0]"
 -- Retrieval info: USED_PORT: address_b 0 0 5 0 INPUT NODEFVAL "address_b[4..0]"
 -- Retrieval info: USED_PORT: clock 0 0 0 0 INPUT VCC "clock"
--- Retrieval info: USED_PORT: q_a 0 0 8 0 OUTPUT NODEFVAL "q_a[7..0]"
--- Retrieval info: USED_PORT: q_b 0 0 8 0 OUTPUT NODEFVAL "q_b[7..0]"
+-- Retrieval info: USED_PORT: q_a 0 0 16 0 OUTPUT NODEFVAL "q_a[15..0]"
+-- Retrieval info: USED_PORT: q_b 0 0 16 0 OUTPUT NODEFVAL "q_b[15..0]"
 -- Retrieval info: CONNECT: @address_a 0 0 5 0 address_a 0 0 5 0
 -- Retrieval info: CONNECT: @address_b 0 0 5 0 address_b 0 0 5 0
 -- Retrieval info: CONNECT: @clock0 0 0 0 0 clock 0 0 0 0
--- Retrieval info: CONNECT: @data_a 0 0 8 0 GND 0 0 8 0
--- Retrieval info: CONNECT: @data_b 0 0 8 0 GND 0 0 8 0
+-- Retrieval info: CONNECT: @data_a 0 0 16 0 GND 0 0 16 0
+-- Retrieval info: CONNECT: @data_b 0 0 16 0 GND 0 0 16 0
 -- Retrieval info: CONNECT: @wren_a 0 0 0 0 GND 0 0 0 0
 -- Retrieval info: CONNECT: @wren_b 0 0 0 0 GND 0 0 0 0
--- Retrieval info: CONNECT: q_a 0 0 8 0 @q_a 0 0 8 0
--- Retrieval info: CONNECT: q_b 0 0 8 0 @q_b 0 0 8 0
+-- Retrieval info: CONNECT: q_a 0 0 16 0 @q_a 0 0 16 0
+-- Retrieval info: CONNECT: q_b 0 0 16 0 @q_b 0 0 16 0
 -- Retrieval info: GEN_FILE: TYPE_NORMAL rom_cos.vhd TRUE
 -- Retrieval info: GEN_FILE: TYPE_NORMAL rom_cos.inc FALSE
 -- Retrieval info: GEN_FILE: TYPE_NORMAL rom_cos.cmp TRUE
