@@ -13,27 +13,27 @@ use ieee.numeric_std.all;
 --! @port rst_n       Synchronous active-low reset.
 --! @port en_i        Pulse high to latch angle_i on that rising edge.
 --! @port angle_i     Input angle, Q0.16 unsigned BAM (SLV, angle/360 in [0,1)).
---! @port sin_o       Sine result, valid when done_o='1' (SLV, Q2.14 signed).
---! @port cos_o       Cosine result, valid when done_o='1' (SLV, Q2.14 signed).
+--! @port sin_o       Sine result, valid when done_o='1' (SLV, Q1.15 signed).
+--! @port cos_o       Cosine result, valid when done_o='1' (SLV, Q1.15 signed).
 --! @port done_o      Pulses high for one cycle when outputs are valid.
 --!
---! @note Computation latency is 4 clock cycles from en_i assertion.
+--! @note Computation latency is 5 clock cycles from en_i assertion.
 entity sincos is
     port (
         clk     : in  std_logic;                    --!< Clock.
         rst_n   : in  std_logic;                    --!< Synchronous active-low reset.
         en_i   : in  std_logic;                    --!< Enable input.
         angle_i : in  std_logic_vector(15 downto 0);        --!< Q0.16 BAM
-        sin_o   : out std_logic_vector(15 downto 0);      --!< Sine output, Q2.14.
-        cos_o   : out std_logic_vector(15 downto 0);       --!< Cosine output, Q2.14.
+        sin_o   : out std_logic_vector(15 downto 0);      --!< Sine output, Q1.15.
+        cos_o   : out std_logic_vector(15 downto 0);       --!< Cosine output, Q1.15.
         done_o : out std_logic                     --!< Pulses high for one cycle when outputs are valid.
     );
 end entity sincos;
 
 architecture rtl of sincos is
-
+    constant W_QUAD : integer := 2; --!< Width of quadrant signal.
     constant W_ROM : integer := 5; --!< Width of LUT address.
-    constant W_INT : integer := 16-2-W_ROM; --!< Width of interpolation factor.
+    constant W_INT : integer := 16-W_QUAD-W_ROM; --!< Width of interpolation factor.
 
     component rom_sin
         PORT
@@ -77,7 +77,7 @@ architecture rtl of sincos is
     signal angle_0_max : std_logic;
     signal angle_1_max : std_logic;
 
-    constant C_ONE : signed(15 downto 0) := to_signed(2 ** 14, 16);
+    constant C_ONE : signed(15 downto 0) := to_signed(2 ** 15 - 1, 16);
     constant C_ZERO : signed(15 downto 0) := to_signed(0, 16);
     
 
@@ -85,6 +85,7 @@ architecture rtl of sincos is
     signal sin_raw_1 : std_logic_vector(15 downto 0);
     signal sin_0 : signed(15 downto 0);
     signal sin_1 : signed(15 downto 0);
+    signal sin_0_d : signed(15 downto 0); --!< sin_0 delayed to align with sin_d.
     signal sin_d : signed(15 downto 0);
     signal sin_intp : std_logic_vector(31 downto 0);
     signal sin_v : signed(15 downto 0);
@@ -94,6 +95,7 @@ architecture rtl of sincos is
     signal cos_raw_1 : std_logic_vector(15 downto 0);
     signal cos_0 : signed(15 downto 0);
     signal cos_1 : signed(15 downto 0);
+    signal cos_0_d : signed(15 downto 0); --!< cos_0 delayed to align with cos_d.
     signal cos_d : signed(15 downto 0);
     signal cos_intp : std_logic_vector(31 downto 0);
     signal cos_v : signed(15 downto 0);
@@ -101,7 +103,7 @@ architecture rtl of sincos is
     -- Interpolation factor
     signal k_intp : std_logic_vector(15 downto 0);
 
-    constant NPIPE : integer := 4; --!< Number of pipeline stages.
+    constant NPIPE : integer := 5; --!< Number of pipeline stages.
     type sign_array_t is array (0 to NPIPE-1) of std_logic;
     type done_array_t is array (0 to NPIPE-1) of std_logic;
     type k_array_t is array (0 to NPIPE-1) of std_logic_vector(W_INT-1 downto 0);
@@ -136,7 +138,7 @@ begin
             q_b       => cos_raw_1
         );
     
-    -- Q2.14 * Q7.9 = Q9.23, then truncate to Q2.14
+    -- Q1.15 * Q7.9 = Q8.24, then truncate to Q1.15
     interp_sin : mult_16
         port map (
             dataa  => std_logic_vector(sin_d),
@@ -194,7 +196,7 @@ LUT_addressing:
             angle_0 <= angle_0_ext;
             angle_1 <= angle_1_ext;
 
-            -- 1-cycle delay to match LUT reading latency
+            -- 1) 1-cycle delay to match LUT reading latency
             angle_0_max <= angle_0(W_ROM);
             angle_1_max <= angle_1(W_ROM);
         end if;
@@ -202,40 +204,37 @@ LUT_addressing:
 
 LUT_reading:
     process (clk)
-        variable sin_0_var : signed(15 downto 0);
-        variable sin_1_var : signed(15 downto 0);
-        variable cos_0_var : signed(15 downto 0);
-        variable cos_1_var : signed(15 downto 0);
     begin
         if rising_edge(clk) then
             -- 2) Read LUT values and compute differences
             if angle_0_max = '1' then
-                sin_0_var := C_ONE;
-                sin_1_var := signed(sin_raw_1);
-                cos_0_var := C_ZERO;
-                cos_1_var := signed(cos_raw_1);
+                sin_0 <= C_ONE;
+                sin_1 <= signed(sin_raw_1);
+                cos_0 <= C_ZERO;
+                cos_1 <= signed(cos_raw_1);
             elsif angle_1_max = '1' then
-                sin_0_var := signed(sin_raw_0);
-                sin_1_var := C_ONE;
-                cos_0_var := signed(cos_raw_0);
-                cos_1_var := C_ZERO;
+                sin_0 <= signed(sin_raw_0);
+                sin_1 <= C_ONE;
+                cos_0 <= signed(cos_raw_0);
+                cos_1 <= C_ZERO;
             else
-                sin_0_var := signed(sin_raw_0);
-                sin_1_var := signed(sin_raw_1);
-                cos_0_var := signed(cos_raw_0);
-                cos_1_var := signed(cos_raw_1);
+                sin_0 <= signed(sin_raw_0);
+                sin_1 <= signed(sin_raw_1);
+                cos_0 <= signed(cos_raw_0);
+                cos_1 <= signed(cos_raw_1);
             end if;
-            sin_0 <= sin_0_var;
-            cos_0 <= cos_0_var;
-            sin_1 <= sin_1_var;
-            cos_1 <= cos_1_var;
-            sin_d <= sin_1_var - sin_0_var;
-            cos_d <= cos_1_var - cos_0_var;
+
+            -- 3) 1-cycle delay to compute differences after LUT read; delay
+            -- the base values too so they stay aligned with the differences
+            sin_d <= sin_1 - sin_0;
+            cos_d <= cos_1 - cos_0;
+            sin_0_d <= sin_0;
+            cos_0_d <= cos_0;
         end if;
     end process;
 
-    -- Multiplier inputs ready at the end of stage 2
-    k_intp(W_INT-1 downto 0) <= k_array(2);
+    -- Multiplier inputs ready at the end of stage 3
+    k_intp(W_INT-1 downto 0) <= k_array(3);
     k_intp(15 downto W_INT) <= (others => '0');
 
 
@@ -243,9 +242,9 @@ MULTIPLY_read:
     process (clk)
     begin
         if rising_edge(clk) then
-            -- 3) Sum base and interpolated values
-            sin_v <= sin_0 + signed(sin_intp(15+9 downto 9));
-            cos_v <= cos_0 + signed(cos_intp(15+9 downto 9));
+            -- 4) Sum base and interpolated values
+            sin_v <= sin_0_d + signed(sin_intp(15+9 downto 9));
+            cos_v <= cos_0_d + signed(cos_intp(15+9 downto 9));
         end if;
     end process;
 
@@ -253,18 +252,18 @@ OUTPUT_write:
     process (clk)
     begin   
         if rising_edge(clk) then
-            -- 4) Apply quadrant sign (sin negates on H, cos negates on H xor Q)
-            if cos_sign_array(3) = '1' then
+            -- 5) Apply quadrant sign (sin negates on H, cos negates on H xor Q)
+            if cos_sign_array(4) = '1' then
                 cos_o <= std_logic_vector(-cos_v);
             else
                 cos_o <= std_logic_vector(cos_v);
             end if;
-            if sin_sign_array(3) = '1' then
+            if sin_sign_array(4) = '1' then
                 sin_o <= std_logic_vector(-sin_v);
             else
                 sin_o <= std_logic_vector(sin_v);
             end if;
-            done_o <= done_array(3);
+            done_o <= done_array(4);
         end if;
     end process;
 

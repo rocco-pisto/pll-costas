@@ -40,19 +40,19 @@ if __name__ == "__main__":
     base_folder = Path(__file__).parents[2]
 
     # sin/cos table
-    w_r = int(14)
-    w_l = int(2)
+    w_r = int(15)
+    w_l = int(1)
     n_pt = 32
 
     rom_sin_folder = base_folder / "src" / "lib" / "altera" / "rom_sin"
     rom_cos_folder = base_folder / "src" / "lib" / "altera" / "rom_cos"
+
+    phase = 0.5 * np.pi * np.arange(n_pt) / n_pt
+    sin_f = np.clip(np.sin(phase), 0, 1 - 2**-w_r)
+    cos_f = np.clip(np.cos(phase), 0, 1 - 2**-w_r)
     # Generate sine and cosine tables
-    sin_table = [
-        SFixed(w_l, -w_r, np.sin(0.5 * np.pi * i / n_pt)).u for i in range(n_pt)
-    ]
-    cos_table = [
-        SFixed(w_l, -w_r, np.cos(0.5 * np.pi * i / n_pt)).u for i in range(n_pt)
-    ]
+    sin_table = [SFixed(w_l, -w_r, sin_f[i]).u for i in range(n_pt)]
+    cos_table = [SFixed(w_l, -w_r, cos_f[i]).u for i in range(n_pt)]
 
     # Write tables to MIF files
     write_mif(sin_table, width=w_l + w_r, path=rom_sin_folder / "sin_table.mif")

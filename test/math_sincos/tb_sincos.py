@@ -15,13 +15,14 @@ from mod_sincos import SinCos
 CLK_PERIOD_NS = 20
 
 W_ROM = 5  # first-quadrant LUT address width, must match sincos.vhd
-Q_OUT = 14  # sin_o/cos_o fractional bits (Q2.14)
-W_ANGLE = 16  # angle_i / sin_o,cos_o format: Q0.16 BAM in, Q2.14 out
+Q_OUT = 15  # sin_o/cos_o fractional bits (Q1.15, +1.0 saturates to 1 - 1 LSB)
+W_ANGLE = 16  # angle_i / sin_o,cos_o format: Q0.16 BAM in, Q1.15 out
 
 # Tolerance for the LUT + linear-interpolation approximation, not a bit-exact
 # match: max curvature error over one LUT segment (360 / (4 * 2**W_ROM) degrees)
-# is on the order of a few LSBs at Q2.14.
-MAX_ERR_LSB = 10
+# is on the order of a few LSBs, same absolute size regardless of Q_OUT, so
+# counted in Q1.15 LSBs (twice as many as the old Q2.14 format) here.
+MAX_ERR_LSB = 20
 TOL = MAX_ERR_LSB / 2**Q_OUT
 
 
@@ -31,7 +32,7 @@ def to_bam(angle_deg: float) -> int:
 
 
 def to_float(raw_signed: int) -> float:
-    """Decode a Q2.14 signed raw value (sin_o/cos_o format) to float."""
+    """Decode a Q1.15 signed raw value (sin_o/cos_o format) to float."""
     return raw_signed / 2**Q_OUT
 
 
@@ -80,7 +81,9 @@ async def tb_sincos(dut):
         dut.en_i.value = 1
         await dut.clk.rising_edge
         dut.en_i.value = 0
+
         await dut.done_o.rising_edge
+        await dut.clk.falling_edge
 
         sin_hw[i] = to_float(dut.sin_o.value.to_signed())
         cos_hw[i] = to_float(dut.cos_o.value.to_signed())
@@ -95,7 +98,7 @@ async def tb_sincos(dut):
     # DUT should match this exactly, isolating real bugs from the LUT's
     # inherent approximation error (which shows up against sin_ref/cos_ref
     # instead).
-    model = SinCos(w_angle=W_ANGLE, w_lut=W_ROM)
+    model = SinCos(w_angle=W_ANGLE, w_lut=W_ROM, q_out=Q_OUT)
     sin_model, cos_model = model.step_bam(bams)
 
     # --- plot ----------------------------------------------------------------
@@ -136,3 +139,40 @@ async def tb_sincos(dut):
         assert (
             abs(cos_hw[i] - cos_ref[i]) < TOL
         ), f"angle={angle}: cos ref={cos_ref[i]} hw={cos_hw[i]} err={cos_hw[i] - cos_ref[i]}"
+
+    # --- pipelined (streaming) check -----------------------------------------
+    # Same angles as the single-shot sweep above, but latch a new sample every
+    # clock cycle instead of waiting for done_o each time. The datapath is
+    # unconditionally combinational/registered every cycle (en_i only tags
+    # which pipeline slot is valid), so streaming should produce exactly the
+    # single-shot outputs, in order, just pipelined instead of one-at-a-time.
+    DRAIN_CYCLES = (
+        int(dut.NPIPE.value) + 1
+    )  # flush the last in-flight samples after the stream ends
+    pipe_sin = []
+    pipe_cos = []
+
+    await dut.done_o.falling_edge  # ensure the pipeline is empty before starting
+
+    for i in range(n_pts + DRAIN_CYCLES):
+        if i < n_pts:
+            dut.angle_i.value = int(bams[i])
+            dut.en_i.value = 1
+        else:
+            dut.en_i.value = 0
+        await dut.clk.rising_edge
+        await dut.clk.falling_edge
+        if dut.done_o.value == 1:
+            pipe_sin.append(to_float(dut.sin_o.value.to_signed()))
+            pipe_cos.append(to_float(dut.cos_o.value.to_signed()))
+
+    assert (
+        len(pipe_sin) == n_pts
+    ), f"expected {n_pts} pipelined outputs, got {len(pipe_sin)}"
+    for i in range(n_pts):
+        assert (
+            pipe_sin[i] == sin_hw[i]
+        ), f"angle={angles[i]}: pipelined sin={pipe_sin[i]} != single-shot {sin_hw[i]}"
+        assert (
+            pipe_cos[i] == cos_hw[i]
+        ), f"angle={angles[i]}: pipelined cos={pipe_cos[i]} != single-shot {cos_hw[i]}"
