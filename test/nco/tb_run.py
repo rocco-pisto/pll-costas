@@ -40,7 +40,6 @@ def test_nco():
         PROJECT_DIR / "src" / "conf" / "board.vhd",
         altera_dir / "rom_sin" / "rom_sin.vhd",
         altera_dir / "rom_cos" / "rom_cos.vhd",
-        altera_dir / "mult_16" / "mult_16.vhd",
         PROJECT_DIR / "src" / "lib" / "math" / "sincos.vhd",
         PROJECT_DIR / "src" / "lib" / "time" / "phase.vhd",
         PROJECT_DIR / "src" / "nco" / "nco.vhd",

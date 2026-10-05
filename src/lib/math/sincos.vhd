@@ -55,14 +55,6 @@ architecture rtl of sincos is
             q_b		: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
         );
     end component;
-    component mult_16
-        PORT
-        (
-            dataa		: IN STD_LOGIC_VECTOR (15 DOWNTO 0);
-            datab		: IN STD_LOGIC_VECTOR (15 DOWNTO 0);
-            result		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0)
-        );
-    end component;
     
     -- Angle slicing
     signal in_sin_sign : std_logic; -- sin negates on H alone (angle_i(15))
@@ -83,34 +75,31 @@ architecture rtl of sincos is
 
     signal sin_raw_0 : std_logic_vector(15 downto 0);
     signal sin_raw_1 : std_logic_vector(15 downto 0);
-    signal sin_0 : signed(15 downto 0);
-    signal sin_1 : signed(15 downto 0);
-    signal sin_0_d : signed(15 downto 0); --!< sin_0 delayed to align with sin_d.
     signal sin_d : signed(15 downto 0);
-    signal sin_intp : std_logic_vector(31 downto 0);
+    signal sin_intp : signed(16+W_INT downto 0);
     signal sin_v : signed(15 downto 0);
     
 
     signal cos_raw_0 : std_logic_vector(15 downto 0);
     signal cos_raw_1 : std_logic_vector(15 downto 0);
-    signal cos_0 : signed(15 downto 0);
-    signal cos_1 : signed(15 downto 0);
-    signal cos_0_d : signed(15 downto 0); --!< cos_0 delayed to align with cos_d.
     signal cos_d : signed(15 downto 0);
-    signal cos_intp : std_logic_vector(31 downto 0);
+    signal cos_intp : signed(16+W_INT downto 0);
     signal cos_v : signed(15 downto 0);
 
-    -- Interpolation factor
-    signal k_intp : std_logic_vector(15 downto 0);
-
-    constant NPIPE : integer := 5; --!< Number of pipeline stages.
+    constant NPIPE : integer := 6; --!< Number of pipeline stages.
     type sign_array_t is array (0 to NPIPE-1) of std_logic;
     type done_array_t is array (0 to NPIPE-1) of std_logic;
     type k_array_t is array (0 to NPIPE-1) of std_logic_vector(W_INT-1 downto 0);
+    type lut_array_t is array (0 to 2) of signed(15 downto 0);
     signal sin_sign_array : sign_array_t;
     signal cos_sign_array : sign_array_t;
     signal k_array : k_array_t;
     signal done_array : done_array_t;
+    signal cos_0 : lut_array_t;
+    signal cos_1 : signed(15 downto 0);
+    signal sin_0 : lut_array_t;
+    signal sin_1 : signed(15 downto 0);
+
 begin
 
     -- Slice angle into quadrant, LUT index, and interpolation factor
@@ -136,21 +125,6 @@ begin
             clock     => clk,
             q_a       => cos_raw_0,
             q_b       => cos_raw_1
-        );
-    
-    -- Q1.15 * Q7.9 = Q8.24, then truncate to Q1.15
-    interp_sin : mult_16
-        port map (
-            dataa  => std_logic_vector(sin_d),
-            datab  => k_intp,
-            result => sin_intp
-        );
-    
-    interp_cos : mult_16
-        port map (
-            dataa  => std_logic_vector(cos_d),
-            datab  => k_intp,
-            result => cos_intp
         );
 
 PIPELINE:
@@ -208,43 +182,54 @@ LUT_reading:
         if rising_edge(clk) then
             -- 2) Read LUT values and compute differences
             if angle_0_max = '1' then
-                sin_0 <= C_ONE;
+                sin_0(0) <= C_ONE;
                 sin_1 <= signed(sin_raw_1);
-                cos_0 <= C_ZERO;
+                cos_0(0) <= C_ZERO;
                 cos_1 <= signed(cos_raw_1);
             elsif angle_1_max = '1' then
-                sin_0 <= signed(sin_raw_0);
+                sin_0(0) <= signed(sin_raw_0);
                 sin_1 <= C_ONE;
-                cos_0 <= signed(cos_raw_0);
+                cos_0(0) <= signed(cos_raw_0);
                 cos_1 <= C_ZERO;
             else
-                sin_0 <= signed(sin_raw_0);
+                sin_0(0) <= signed(sin_raw_0);
                 sin_1 <= signed(sin_raw_1);
-                cos_0 <= signed(cos_raw_0);
+                cos_0(0) <= signed(cos_raw_0);
                 cos_1 <= signed(cos_raw_1);
             end if;
 
             -- 3) 1-cycle delay to compute differences after LUT read; delay
             -- the base values too so they stay aligned with the differences
-            sin_d <= sin_1 - sin_0;
-            cos_d <= cos_1 - cos_0;
-            sin_0_d <= sin_0;
-            cos_0_d <= cos_0;
+            sin_d <= sin_1 - sin_0(0);
+            cos_d <= cos_1 - cos_0(0);
+
+            -- Delay the base values to align with the multiplier output
+            for i in 1 to 2 loop
+                sin_0(i) <= sin_0(i-1);
+                cos_0(i) <= cos_0(i-1);
+            end loop;
         end if;
     end process;
 
-    -- Multiplier inputs ready at the end of stage 3
-    k_intp(W_INT-1 downto 0) <= k_array(3);
-    k_intp(15 downto W_INT) <= (others => '0');
-
-
-MULTIPLY_read:
+MULTIPLY_intp:
     process (clk)
+        variable k_intp : signed(W_INT downto 0);
     begin
         if rising_edge(clk) then
             -- 4) Sum base and interpolated values
-            sin_v <= sin_0_d + signed(sin_intp(15+9 downto 9));
-            cos_v <= cos_0_d + signed(cos_intp(15+9 downto 9));
+            k_intp := "0" & signed(k_array(3));
+            sin_intp <= sin_d * k_intp;
+            cos_intp <= cos_d * k_intp;
+        end if;
+    end process;
+
+ADD_intp:
+    process (clk)
+    begin
+        if rising_edge(clk) then
+            -- 5) Sum base and interpolated values
+            sin_v <= sin_0(2) + sin_intp(15+W_INT downto W_INT);
+            cos_v <= cos_0(2) + cos_intp(15+W_INT downto W_INT);
         end if;
     end process;
 
@@ -252,18 +237,18 @@ OUTPUT_write:
     process (clk)
     begin   
         if rising_edge(clk) then
-            -- 5) Apply quadrant sign (sin negates on H, cos negates on H xor Q)
-            if cos_sign_array(4) = '1' then
+            -- 6) Apply quadrant sign (sin negates on H, cos negates on H xor Q)
+            if cos_sign_array(5) = '1' then
                 cos_o <= std_logic_vector(-cos_v);
             else
                 cos_o <= std_logic_vector(cos_v);
             end if;
-            if sin_sign_array(4) = '1' then
+            if sin_sign_array(5) = '1' then
                 sin_o <= std_logic_vector(-sin_v);
             else
                 sin_o <= std_logic_vector(sin_v);
             end if;
-            done_o <= done_array(4);
+            done_o <= done_array(5);
         end if;
     end process;
 

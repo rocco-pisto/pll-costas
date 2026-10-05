@@ -36,7 +36,6 @@ def test_sincos():
     vhdl_sources = [
         altera_dir / "rom_sin" / "rom_sin.vhd",
         altera_dir / "rom_cos" / "rom_cos.vhd",
-        altera_dir / "mult_16" / "mult_16.vhd",
         PROJECT_DIR / "src" / "lib" / "math" / "sincos.vhd",
     ]
 

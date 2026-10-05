@@ -28,7 +28,6 @@ In the Compilation Report, look at:
 - **Flow Summary:** logic elements, registers, embedded multipliers and memory bits used.
 - **Analysis & Synthesis → Resource Utilization by Entity:** the breakdown per block.
   - Because `freq_i` is a constant (1 Hz), synthesis folds the `freq × T_CLK` multiplier down to a constant. Don't expect a DSP block for it.
-  - The two `mult_16` instances in sincos should appear as embedded 9-bit multipliers.
 - **Messages:** read the warnings for inferred latches (there should be none), signals truncated or with no driver, and pins stuck at GND/VCC.
 
 ## 3. Pins
