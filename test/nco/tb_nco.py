@@ -22,10 +22,6 @@ FREQ = 50_000  # [Hz] -> 1000 clocks per output cycle
 N_OUT_CYCLES = 3
 N_CYCLES = int(N_OUT_CYCLES * F_CLK / FREQ)
 
-# Clocks from the phase accumulator update to sin_o/cos_o: 1 (sincos samples
-# phase_low) + 5 (sincos pipeline).
-LATENCY = 6
-
 # vs. quantized model: the sincos model is within 1 LSB of the RTL (see
 # mod_sincos.py). vs. ideal float: LUT interpolation error (as in
 # test/math_sincos) plus the 16-bit phase truncation (2*pi*2**-16 rad ~ 13 LSB
@@ -63,6 +59,11 @@ async def tb_nco(dut):
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
 
     await reset(dut)
+
+    # Clocks from the phase accumulator update to sin_o/cos_o: 1 (sincos
+    # samples phase_low) + the sincos pipeline depth, read from the DUT.
+    LATENCY = 1 + int(dut.component_sincos.NPIPE.value)
+    dut._log.info(f"latency: {LATENCY} clock cycles")
 
     # Sample after each rising edge once the registers have settled. Sample
     # n (1-based) of sin_o/cos_o belongs to the phase after n - LATENCY

@@ -42,7 +42,7 @@ set_global_assignment -name DEVICE EP4CE22F17C6
 set_global_assignment -name TOP_LEVEL_ENTITY pll_costas
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 25.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "00:37:36  SEPTEMBER 19, 2026"
-set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "25.1std.0 SP0.02std Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
@@ -91,6 +91,8 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led_6
 
 set_global_assignment -name VHDL_FILE src/conf/board.vhd
 set_global_assignment -name VHDL_FILE src/lib/base/decoder.vhd
+set_global_assignment -name VHDL_FILE src/lib/base/reset_pulse.vhd
+set_global_assignment -name VHDL_FILE src/lib/base/synchronizer.vhd
 set_global_assignment -name VHDL_FILE src/lib/time/phase.vhd
 set_global_assignment -name VHDL_FILE src/lib/math/sincos.vhd
 set_global_assignment -name VHDL_FILE src/nco/nco.vhd
@@ -104,3 +106,4 @@ set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_global_assignment -name FLOW_ENABLE_IO_ASSIGNMENT_ANALYSIS ON
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name QIP_FILE src/lib/altera/pll_200/pll_200.qip

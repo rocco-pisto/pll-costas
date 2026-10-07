@@ -17,7 +17,7 @@ use ieee.numeric_std.all;
 --! @port cos_o       Cosine result, valid when done_o='1' (SLV, Q1.15 signed).
 --! @port done_o      Pulses high for one cycle when outputs are valid.
 --!
---! @note Computation latency is 5 clock cycles from en_i assertion.
+--! @note Computation latency is NPIPE = 6 clock cycles from en_i assertion.
 entity sincos is
     port (
         clk     : in  std_logic;                    --!< Clock.
@@ -216,7 +216,7 @@ MULTIPLY_intp:
         variable k_intp : signed(W_INT downto 0);
     begin
         if rising_edge(clk) then
-            -- 4) Sum base and interpolated values
+            -- 4) Multiply differences by the interpolation factor
             k_intp := "0" & signed(k_array(3));
             sin_intp <= sin_d * k_intp;
             cos_intp <= cos_d * k_intp;
