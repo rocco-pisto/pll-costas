@@ -90,6 +90,8 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led_4
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to led_6
 
 set_global_assignment -name VHDL_FILE src/conf/board.vhd
+set_global_assignment -name VHDL_FILE src/lib/numeric/ufixed_pkg.vhd
+set_global_assignment -name VHDL_FILE src/lib/numeric/sfixed_pkg.vhd
 set_global_assignment -name VHDL_FILE src/lib/base/decoder.vhd
 set_global_assignment -name VHDL_FILE src/lib/base/reset_pulse.vhd
 set_global_assignment -name VHDL_FILE src/lib/base/synchronizer.vhd

@@ -5,13 +5,13 @@ class Phase(object):
     """Integer model of phase.vhd's phase accumulator.
 
     The accumulator holds the phase in cycles as an unsigned integer in units
-    of 2**t_clk_l (UQw_high.-t_clk_l). Each clock it adds freq * T_CLK, where
-    T_CLK is 1/f_clk rounded to 2**t_clk_l -- same rounding as phase.vhd.
+    of 2**t_clk_r (UQw_high.-t_clk_r). Each clock it adds freq * T_CLK, where
+    T_CLK is 1/f_clk rounded to 2**t_clk_r -- same rounding as phase.vhd.
     f_clk is the frequency of the clock the DUT runs on (F_CLK * CLK_MULT).
     """
 
-    def __init__(self, f_clk=50e6, t_clk_l=-40, w_high=16, w_low=16):
-        self.frac = -t_clk_l  # accumulator fractional bits
+    def __init__(self, f_clk=50e6, t_clk_r=-40, w_high=16, w_low=16):
+        self.frac = -t_clk_r  # accumulator fractional bits
         self.w_high = w_high  # phase_high_o bits (UQw_high.0)
         self.w_low = w_low  # phase_low_o bits (UQ0.w_low)
         self.t_clk = int(round(2**self.frac / f_clk))  # raw T_CLK

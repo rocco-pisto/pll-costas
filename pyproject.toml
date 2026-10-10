@@ -1,7 +1,7 @@
 [project]
 name = "pll"
 version = "0.1.0"
-description = "Add your description here"
+description = "Costas-loop PLL on Cyclone IV: Python models and cocotb testbenches for the VHDL design"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

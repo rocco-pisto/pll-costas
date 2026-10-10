@@ -1,17 +1,18 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.math_real.all;
 
 use work.board.all;
+use work.ufixed_pkg.all;
 
 --! @brief Phase accumulator (in cycles) for a given frequency.
 --!
 --! Every clock cycle accumulates freq_i * T_CLK, i.e. the phase advance in
 --! cycles (turns) over one clock period, with T_CLK = 1 / (F_CLK * CLK_MULT).
---! The accumulator is UQ16.(-T_CLK_L) (raw unsigned, LSB weight 2**T_CLK_L
---! cycles) and wraps modulo 2**16 cycles. The outputs are its 16 integer bits
---! and the 16 MSBs of its fractional part (truncated).
+--! T_CLK is ufixed(T_CLK_L downto T_CLK_R) with W_T_CLK bits below the MSB.
+--! The accumulator is ufixed(15 downto T_CLK_R) and wraps modulo 2**16
+--! cycles. The outputs are its 16 integer bits and the 16 MSBs of the
+--! fractional part (truncated).
 --!
 --! @generic CLK_MULT Ratio between clk and the board clock F_CLK (e.g.
 --!                   PLL_MULT when clocked from pll_200).
@@ -25,7 +26,7 @@ use work.board.all;
 --!
 --! @note freq_i is registered into d_phi: a change of freq_i affects the
 --!       accumulator with one clock cycle of latency.
---! @note T_CLK is rounded to 2**T_CLK_L, so the phase drifts by
+--! @note T_CLK is rounded to 2**T_CLK_R, so the phase drifts by
 --!       freq_i * (T_CLK - 1/(F_CLK*CLK_MULT)) cycles per clock.
 entity phase is
     generic (
@@ -42,33 +43,37 @@ end entity;
 
 architecture rtl of phase is
 
-    constant W_FRAC : integer := -T_CLK_L; --!< Accumulator fractional bits.
+    constant W_T_CLK : natural := 16;                  --!< T_CLK precision [bits below the MSB].
+    constant T_CLK_R : integer := T_CLK_L - W_T_CLK;   --!< T_CLK LSB index: 2**-40 s (~0.9 ps).
 
-    --! Clock period [s], rounded to 2**T_CLK_L (UQ-24.40, max ~59.6 ns).
-    --! Raw unsigned: T_CLK [s] = T_CLK * 2**T_CLK_L.
-    constant T_CLK : unsigned(16 downto 0) :=
-        to_unsigned(natural(round(2.0**W_FRAC / (real(to_integer(F_CLK)) * real(CLK_MULT)))), 17);
+    --! Clock period [s], rounded to 2**T_CLK_R.
+    constant T_CLK : ufixed(T_CLK_L downto T_CLK_R) :=
+        to_ufixed(1.0 / (real(to_integer(F_CLK)) * real(CLK_MULT)), T_CLK_L, T_CLK_R);
 
-    signal phi   : unsigned(15+W_FRAC downto 0); --!< Phase accumulator [cycles], UQ16.W_FRAC.
-    signal d_phi : unsigned(15+W_FRAC downto 0); --!< Phase increment per clock [cycles], UQ16.W_FRAC.
+    signal freq  : ufixed(31 downto 0);       --!< freq_i [Hz].
+    signal d_phi : ufixed(15 downto T_CLK_R); --!< Phase increment per clock [cycles].
+    signal phi   : ufixed(15 downto T_CLK_R); --!< Phase accumulator [cycles].
 
 begin
+
+    freq <= to_ufixed(freq_i, freq);
 
     process (clk)
     begin
         if rising_edge(clk) then
-            -- UQ32.0 * UQ-24.40 = UQ8.40 (exact), zero-extended to UQ16.40
-            d_phi <= resize(unsigned(freq_i) * T_CLK, d_phi'length);
+            -- (31 downto 0) * (-24 downto -40) = (8 downto -40), exact:
+            -- resize only zero-extends it
+            d_phi <= resize(freq * T_CLK, d_phi);
             if rst_n = '0' then
                 phi <= (others => '0');
             else
-                -- Wraps on overflow: the phase is periodic modulo 2**16 cycles.
+                -- No growth: wraps, the phase is periodic modulo 2**16 cycles
                 phi <= phi + d_phi;
             end if;
         end if;
     end process;
 
-    phase_high_o <= std_logic_vector(phi(15+W_FRAC downto W_FRAC));
-    phase_low_o  <= std_logic_vector(phi(W_FRAC-1 downto W_FRAC-16));
+    phase_high_o <= to_slv(phi(15 downto 0));
+    phase_low_o  <= to_slv(phi(-1 downto -16));
 
 end architecture;

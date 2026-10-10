@@ -38,6 +38,7 @@ def test_nco():
 
     vhdl_sources = [
         PROJECT_DIR / "src" / "conf" / "board.vhd",
+        PROJECT_DIR / "src" / "lib" / "numeric" / "ufixed_pkg.vhd",
         altera_dir / "rom_sin" / "rom_sin.vhd",
         altera_dir / "rom_cos" / "rom_cos.vhd",
         PROJECT_DIR / "src" / "lib" / "math" / "sincos.vhd",

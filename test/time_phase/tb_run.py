@@ -19,6 +19,7 @@ CLK_MULT_LIST = [1, 4]
 def test_phase():
     vhdl_sources = [
         PROJECT_DIR / "src" / "conf" / "board.vhd",
+        PROJECT_DIR / "src" / "lib" / "numeric" / "ufixed_pkg.vhd",
         PROJECT_DIR / "src" / "lib" / "time" / "phase.vhd",
     ]
 

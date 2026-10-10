@@ -14,7 +14,7 @@ from cocotb.triggers import ReadOnly
 from mod_phase import Phase
 
 F_CLK = 50e6  # must match board.vhd
-T_CLK_L = -40  # must match board.vhd
+T_CLK_R = -40  # must match phase.vhd (T_CLK_L - W_T_CLK)
 CLK_MULT = int(os.environ["CLK_MULT"])  # must match the CLK_MULT generic set by tb_run.py
 
 F_DUT = F_CLK * CLK_MULT  # DUT clock frequency
@@ -27,15 +27,15 @@ N_CYCLES = int(2.5 * N_PER)
 W_LOW = 16  # phase_low_o fractional bits (UQ0.16)
 LSB = 2.0**-W_LOW  # phase_low_o LSB [cycles]
 
-# Exact clock period vs. the one used by the DUT (rounded to 2**T_CLK_L): the
+# Exact clock period vs. the one used by the DUT (rounded to 2**T_CLK_R): the
 # relative difference is a constant frequency error, i.e. a phase drift that
 # grows linearly with time.
-T_CLK_RAW = round(2.0 ** (-T_CLK_L) / F_DUT)
-DRIFT_REL = T_CLK_RAW * 2.0**T_CLK_L * F_DUT - 1  # (T_CLK - 1/F_DUT) * F_DUT
+T_CLK_RAW = round(2.0 ** (-T_CLK_R) / F_DUT)
+DRIFT_REL = T_CLK_RAW * 2.0**T_CLK_R * F_DUT - 1  # (T_CLK - 1/F_DUT) * F_DUT
 
 # Ideal float phase vs. hw: drift (< half a T_CLK LSB per clock) plus the
 # truncation of phase_low_o to W_LOW bits (< 1 LSB).
-DRIFT_MAX = FREQ * 2.0 ** (T_CLK_L - 1)  # [cycles / clock]
+DRIFT_MAX = FREQ * 2.0 ** (T_CLK_R - 1)  # [cycles / clock]
 
 
 async def reset(dut):
@@ -77,7 +77,7 @@ async def tb_phase(dut):
     phase_hw = high_hw + low_hw * LSB
 
     # Bit-accurate model: must match exactly.
-    high_model, low_model = Phase(f_clk=F_DUT, t_clk_l=T_CLK_L, w_low=W_LOW).step(
+    high_model, low_model = Phase(f_clk=F_DUT, t_clk_r=T_CLK_R, w_low=W_LOW).step(
         FREQ, N_CYCLES
     )
 

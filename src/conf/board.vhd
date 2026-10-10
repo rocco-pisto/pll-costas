@@ -9,5 +9,8 @@ use ieee.numeric_std.all;
 package board is
     constant F_CLK    : unsigned(31 downto 0) := to_unsigned(50 * (10**6), 32);  --!< Board clock frequency (clk_0) [Hz].
     constant PLL_MULT : positive := 4;    --!< pll_200 output / input frequency ratio (200 MHz / 50 MHz).
-    constant T_CLK_L  : integer  := -40;  --!< LSB weight of the clock period used by phase.vhd is 2**T_CLK_L s.
+    --! MSB index of a clock period [s] as ufixed(T_CLK_L downto ...): 2**-24 s
+    --! holds periods up to ~119 ns, i.e. clocks from ~8.4 MHz. The LSB
+    --! (precision) is chosen by each unit.
+    constant T_CLK_L  : integer  := -24;
 end package;

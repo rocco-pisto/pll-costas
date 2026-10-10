@@ -15,7 +15,7 @@ from mod_nco import Nco
 
 CLK_PERIOD_NS = 20
 F_CLK = 50e6  # must match board.vhd
-T_CLK_L = -40  # must match board.vhd
+T_CLK_R = -40  # must match phase.vhd (T_CLK_L - W_T_CLK)
 Q_OUT = 15  # sin_o/cos_o fractional bits (Q1.15)
 
 FREQ = 50_000  # [Hz] -> 1000 clocks per output cycle
@@ -86,7 +86,7 @@ async def tb_nco(dut):
     n = np.arange(1, N_CYCLES + 1)
     t_us = n * CLK_PERIOD_NS * 1e-3
 
-    sin_model, cos_model = Nco(f_clk=F_CLK, t_clk_l=T_CLK_L).step(FREQ, N_CYCLES)
+    sin_model, cos_model = Nco(f_clk=F_CLK, t_clk_r=T_CLK_R).step(FREQ, N_CYCLES)
 
     phase_ref = 2 * np.pi * FREQ * n / F_CLK
     sin_ref = np.sin(phase_ref)
